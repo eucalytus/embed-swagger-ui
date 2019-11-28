@@ -1,7 +1,9 @@
 package handler
 
 import (
+	_ "github.com/eucalytus/embed-swagger-ui/statik"
 	"github.com/gin-gonic/gin"
+	"github.com/rakyll/statik/fs"
 	"net/http"
 	"path"
 	"strings"
@@ -9,7 +11,9 @@ import (
 
 const INDEX = "index.html"
 
-func Exists(fs http.FileSystem, prefix string, filepath string) bool {
+var StaticFs, _ = fs.New()
+
+func exists(fs http.FileSystem, prefix string, filepath string) bool {
 	if p := strings.TrimPrefix(filepath, prefix); len(p) < len(filepath) {
 		name := path.Join(prefix, p)
 		f, err := fs.Open(name)
@@ -38,15 +42,17 @@ func Exists(fs http.FileSystem, prefix string, filepath string) bool {
 }
 
 // Static returns a middleware handler that serves static files in the given directory.
-func Serve(urlPrefix string, fs http.FileSystem) gin.HandlerFunc {
-	fileserver := http.FileServer(fs)
+func Serve(urlPrefix string) gin.HandlerFunc {
+	fileserver := http.FileServer(StaticFs)
 	if urlPrefix != "" {
 		fileserver = http.StripPrefix(urlPrefix, fileserver)
 	}
 	return func(c *gin.Context) {
-		if Exists(fs, urlPrefix, c.Request.URL.Path) {
+		if exists(StaticFs, urlPrefix, c.Request.URL.Path) {
 			fileserver.ServeHTTP(c.Writer, c.Request)
 			c.Abort()
 		}
 	}
 }
+
+var SwaggerUIHandler = http.FileServer(StaticFs)
