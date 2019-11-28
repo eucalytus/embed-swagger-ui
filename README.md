@@ -30,7 +30,7 @@ import (
 )
 
 func main() {
-	http.Handle("/", handler.SwaggerUIHandler)
+	http.Handle("/ui/", http.StripPrefix("/ui", handler.SwaggerUIHandler))
 	http.ListenAndServe(":80", nil)
 }
 ```
