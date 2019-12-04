@@ -5,7 +5,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rakyll/statik/fs"
 	"net/http"
+	"net/url"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -56,3 +58,27 @@ func Serve(urlPrefix string) gin.HandlerFunc {
 }
 
 var SwaggerUIHandler = http.FileServer(StaticFs)
+
+func ServeWithCustomIndexHtml(prefix string, customIndexHtml string) http.Handler {
+	needHandleIndexHtml := strings.TrimSpace(customIndexHtml) != ""
+	buf := []byte(customIndexHtml)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if p := strings.TrimPrefix(r.URL.Path, prefix); len(p) < len(r.URL.Path) {
+			r2 := new(http.Request)
+			*r2 = *r
+			r2.URL = new(url.URL)
+			*r2.URL = *r.URL
+			r2.URL.Path = p
+			if needHandleIndexHtml && (p == "index.html" || p == "/") {
+				w.WriteHeader(200)
+				w.Header().Set("Content-Type", "text/html")
+				w.Header().Set("Content-Length", strconv.FormatInt(int64(len(buf)), 10))
+				w.Write([]byte(customIndexHtml))
+			} else {
+				SwaggerUIHandler.ServeHTTP(w, r2)
+			}
+		} else {
+			http.NotFound(w, r)
+		}
+	})
+}
